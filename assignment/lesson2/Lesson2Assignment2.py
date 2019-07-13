@@ -62,9 +62,10 @@ goodMatch = []
 for m, n in matches:
 	# goodMatch是经过筛选的优质配对，如果2个配对中第一匹配的距离小于第二匹配的距离的1/2，基本可以说明这个第一配对是两幅图像中独特的，不重复的特征点,可以保留。
     if m.distance < 0.50*n.distance:
-        goodMatch.append([m])
+        #print(m.queryIdx)
+        goodMatch.append(m)
 # 增加一个维度
-goodMatch = np.expand_dims(goodMatch, 1)
+#goodMatch = np.expand_dims(goodMatch, 1)
 #print(goodMatch[:20])
 
 '''
@@ -74,8 +75,17 @@ goodMatch = np.expand_dims(goodMatch, 1)
 
 if len(goodMatch) > min_match_count:
     # 获取关键点的坐标
-    src_pts = np.float32([psd_kp1[m.queryIdx].pt for m in goodMatch]).reshape(-1, 1, 2)
-    dst_pts = np.float32([psd_kp2[m.trainIdx].pt for m in goodMatch]).reshape(-1, 1, 2)
+    array1 = []
+    array2 = []
+    for m in goodMatch:
+        print(m.queryIdx)
+        qindex = m.queryIdx
+        tindex = m.trainIdx
+        array1.append(psd_kp1[qindex].pt)
+        array2.append(psd_kp1[tindex].pt)
+
+    src_pts = np.float32(array1).reshape(-1, 1, 2)
+    dst_pts = np.float32(array2).reshape(-1, 1, 2)
     # 第三个参数 Method used to computed a homography matrix.
     #  The following methods are possible: #0 - a regular method using all the points
     # CV_RANSAC - RANSAC-based robust method
@@ -85,25 +95,25 @@ if len(goodMatch) > min_match_count:
     M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
     matchesMask = mask.ravel().tolist()
     # 获取原图像的高和宽
-    h, w = psd_img_1.shape
+    #h, w = psd_img_1.shape
     # 使用得到的变换矩阵对原图想的四个变换获得在目标图像上的坐标
-    pts = np.float32([[0, 0], [0, h - 1], [w - 1, h - 1], [w - 1, 0]]).reshape(-1, 1, 2)
-    dst = cv2.perspectiveTransform(pts, M)
+    #pts = np.float32([[0, 0], [0, h - 1], [w - 1, h - 1], [w - 1, 0]]).reshape(-1, 1, 2)
+    #dst = cv2.perspectiveTransform(pts, M)
     # 将原图像转换为灰度图
-    img2 = cv2.polylines(psd_img_2, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
+    #img2 = cv2.polylines(psd_img_2, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
 else:
     print('Not enough matches are found - %d/%d' % (len(goodMatch), min_match_count))
     matchesMask = None
 
 # 最后在绘制inliers，如果能成功找到目标图像的话或者匹配关键点失败
 draw_params = dict(matchColor=(0, 255, 0),
-                   singlePointColor=None,
+                   singlePointColor= (0,0,255),
                    matchesMask=matchesMask,
                    flags=2)
 
 
 
-img_out = cv2.drawMatchesKnn(psd_img_1, psd_kp1, psd_img_2, psd_kp2, goodMatch[:], None, **draw_params)
+img_out = cv2.drawMatches(psd_img_1, psd_kp1, psd_img_2, psd_kp2, goodMatch[:], None, **draw_params)
 
 cv2.imshow('image', img_out)#展示图片
 cv2.waitKey(0)#等待按键按下
